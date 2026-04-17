@@ -1,0 +1,13 @@
+{
+  "region": "eu-north-1",
+  "account_id": "570017720146",
+  "sqs_queue_url": "https://sqs.eu-north-1.amazonaws.com/570017720146/flood-monitoring-queue",
+  "sqs_queue_arn": "arn:aws:sqs:eu-north-1:570017720146:flood-monitoring-queue",
+  "dynamodb_table": "FloodSensorData",
+  "dynamodb_table_arn": "arn:aws:dynamodb:eu-north-1:570017720146:table/FloodSensorData",
+  "lambda_ingester_arn": "arn:aws:lambda:eu-north-1:570017720146:function:flood-data-ingester",
+  "lambda_dashboard_arn": "arn:aws:lambda:eu-north-1:570017720146:function:flood-dashboard-api",
+  "api_gateway_url": "https://ew06b80p1i.execute-api.eu-north-1.amazonaws.com",
+  "dashboard_url": "http://flood-monitoring-dash-720146.s3-website.eu-north-1.amazonaws.com",
+  "s3_bucket": "flood-monitoring-dash-720146"
+}

@@ -1,0 +1,29 @@
+Starting Flood Monitoring Simulation...
+Creating cloudModule on device cloud
+Creating processingModule on device fog-node
+Creating sensorModule on device edge-device
+0.0 Submitted application flood-monitoring
+=========================================
+============== RESULTS ==================
+=========================================
+EXECUTION TIME : 252
+=========================================
+APPLICATION LOOP DELAYS
+=========================================
+[WATER_LEVEL, sensorModule, processingModule, cloudModule, FLOOD_ALERT] ---> 43.437777777777555
+=========================================
+TUPLE CPU EXECUTION DELAY
+=========================================
+_SENSOR_TO_PROCESSING_ ---> 0.2777777777778283
+WATER_LEVEL ---> 4.5
+FLOW_RATE ---> 4.5
+TEMPERATURE ---> 4.5
+_PROCESSING_TO_CLOUD_ ---> 0.13888888888891415
+SOIL_MOISTURE ---> 4.5
+RAINFALL ---> 4.5
+=========================================
+cloud : Energy Consumed = 315263.3765432204
+fog-node : Energy Consumed = 199935.90000000858
+edge-device : Energy Consumed = 199644.5
+Cost of execution in cloud = 54948.15555556575
+Total network usage = 27024.9

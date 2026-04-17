@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flood Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1e3a5f, #2563eb);
+            padding: 20px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .header h1 { font-size: 24px; font-weight: 700; }
+        .header .subtitle { font-size: 13px; color: #93c5fd; margin-top: 2px; }
+        .header .status {
+            display: flex; align-items: center; gap: 10px;
+            font-size: 13px; color: #94a3b8;
+        }
+        .header .status .dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #22c55e; animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        /* Alert Banner */
+        .alert-banner {
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 20px;
+            display: none;
+            animation: slideIn 0.3s ease;
+        }
+        .alert-banner.active { display: flex; align-items: center; gap: 16px; }
+        .alert-banner.danger { background: #7f1d1d; border: 1px solid #dc2626; }
+        .alert-banner.warning { background: #78350f; border: 1px solid #f59e0b; }
+        .alert-banner.normal { background: #14532d; border: 1px solid #22c55e; }
+        .alert-banner .alert-icon { font-size: 28px; }
+        .alert-banner h3 { font-size: 15px; }
+        .alert-banner p { font-size: 13px; color: #d1d5db; margin-top: 2px; }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Sensor Cards */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+        }
+        .card .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 12px;
+        }
+        .card .card-title {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+            color: #94a3b8; font-weight: 600;
+        }
+        .risk-badge {
+            padding: 3px 10px; border-radius: 20px; font-size: 10px;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .risk-NORMAL { background: #166534; color: #86efac; }
+        .risk-WARNING { background: #854d0e; color: #fde047; }
+        .risk-DANGER { background: #991b1b; color: #fca5a5; animation: blink 1s infinite; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .card .value { font-size: 34px; font-weight: 700; margin-bottom: 2px; }
+        .card .unit { font-size: 13px; color: #64748b; }
+        .card .stats {
+            display: flex; gap: 14px; margin-top: 12px;
+            font-size: 11px; color: #64748b;
+            border-top: 1px solid #334155;
+            padding-top: 10px;
+        }
+        .card .stats span { display: flex; flex-direction: column; }
+        .card .stats .stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .card .stats .stat-value { font-size: 13px; color: #94a3b8; font-weight: 600; }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(580px, 1fr));
+            gap: 20px;
+        }
+        .chart-container {
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #334155;
+        }
+        .chart-container h3 {
+            font-size: 15px; margin-bottom: 16px; color: #cbd5e1;
+        }
+        canvas { width: 100% !important; }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            margin-top: 30px;
+            font-size: 12px;
+            color: #475569;
+            border-top: 1px solid #1e293b;
+        }
+
+        .loading {
+            text-align: center; padding: 60px;
+            color: #64748b; font-size: 16px;
+        }
+        .loading .spinner {
+            width: 40px; height: 40px; border: 3px solid #334155;
+            border-top-color: #3b82f6; border-radius: 50%;
+            animation: spin 1s linear infinite; margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .charts-grid { grid-template-columns: 1fr; }
+            .cards-grid { grid-template-columns: repeat(2, 1fr); }
+            .header h1 { font-size: 18px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>&#127754; Flood Monitoring Dashboard</h1>
+            <div class="subtitle">Real-time IoT Sensor Data | Fog &amp; Edge Computing | AWS Cloud Backend</div>
+        </div>
+        <div class="status">
+            <div class="dot" id="status-dot"></div>
+            <span id="last-updated">Connecting...</span>
+            <span>| Refresh: 10s</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="alert-banner" class="alert-banner">
+            <div class="alert-icon" id="alert-icon">&#9888;&#65039;</div>
+            <div>
+                <h3 id="alert-title">System Status</h3>
+                <p id="alert-message"></p>
+            </div>
+        </div>
+
+        <div class="cards-grid" id="sensor-cards">
+            <div class="loading">
+                <div class="spinner"></div>
+                Loading sensor data...
+            </div>
+        </div>
+
+        <div class="charts-grid" id="charts-container"></div>
+
+        <div class="footer">
+            Flood Monitoring System &mdash; Fog &amp; Edge Computing CA Project &mdash;
+            Sensors &#8594; Fog Node &#8594; SQS &#8594; Lambda &#8594; DynamoDB &#8594; API Gateway &#8594; Dashboard
+        </div>
+    </div>
+
+    <script>
+        // API base URL (injected by deploy script)
+        const API_BASE_URL = '{{API_BASE_URL}}';
+
+        // Sensor display configuration
+        const SENSOR_CONFIG = {
+            water_level:   { label: 'Water Level',   color: '#3b82f6', icon: '&#128167;' },
+            rainfall:      { label: 'Rainfall',      color: '#8b5cf6', icon: '&#127783;&#65039;' },
+            flow_rate:     { label: 'Flow Rate',     color: '#06b6d4', icon: '&#127754;' },
+            soil_moisture: { label: 'Soil Moisture',  color: '#22c55e', icon: '&#127793;' },
+            temperature:   { label: 'Temperature',   color: '#f59e0b', icon: '&#127777;&#65039;' }
+        };
+
+        const charts = {};
+        let fetchErrors = 0;
+
+        // ---- Chart Initialization ----
+        function initCharts() {
+            const container = document.getElementById('charts-container');
+            container.innerHTML = '';
+
+            for (const [type, config] of Object.entries(SENSOR_CONFIG)) {
+                const div = document.createElement('div');
+                div.className = 'chart-container';
+                div.innerHTML = `
+                    <h3>${config.icon} ${config.label} &mdash; Time Series</h3>
+                    <canvas id="chart-${type}"></canvas>
+                `;
+                container.appendChild(div);
+
+                const ctx = document.getElementById(`chart-${type}`).getContext('2d');
+                charts[type] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [
+                            {
+                                label: `${config.label} (Raw)`,
+                                data: [],
+                                borderColor: config.color,
+                                backgroundColor: config.color + '20',
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 2,
+                                borderWidth: 2
+                            },
+                            {
+                                label: 'Fog Processed (Avg)',
+                                data: [],
+                                borderColor: config.color + '80',
+                                borderDash: [5, 5],
+                                fill: false,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                borderWidth: 1.5
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        aspectRatio: 2.5,
+                        interaction: { intersect: false, mode: 'index' },
+                        scales: {
+                            x: {
+                                ticks: { color: '#64748b', maxTicksLimit: 10, font: { size: 10 } },
+                                grid: { color: '#1e293b' }
+                            },
+                            y: {
+                                ticks: { color: '#64748b', font: { size: 10 } },
+                                grid: { color: '#334155' }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                labels: { color: '#94a3b8', font: { size: 11 }, usePointStyle: true }
+                            },
+                            tooltip: {
+                                backgroundColor: '#1e293b',
+                                titleColor: '#e2e8f0',
+                                bodyColor: '#94a3b8',
+                                borderColor: '#334155',
+                                borderWidth: 1
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // ---- Update Sensor Cards ----
+        function updateCards(latestData) {
+            const container = document.getElementById('sensor-cards');
+            container.innerHTML = '';
+
+            let dangerSensors = [];
+            let warningSensors = [];
+
+            for (const [type, config] of Object.entries(SENSOR_CONFIG)) {
+                const data = latestData[type];
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                if (data) {
+                    const risk = data.risk_level || 'NORMAL';
+                    if (risk === 'DANGER') dangerSensors.push(config.label);
+                    if (risk === 'WARNING') warningSensors.push(config.label);
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="card-title">${config.icon} ${config.label}</span>
+                            <span class="risk-badge risk-${risk}">${risk}</span>
+                        </div>
+                        <div class="value" style="color: ${config.color}">${data.value !== undefined ? data.value : '--'}</div>
+                        <div class="unit">${data.unit || ''}</div>
+                        <div class="stats">
+                            <span><span class="stat-label">Avg</span><span class="stat-value">${data.processed_value !== undefined ? data.processed_value : '--'}</span></span>
+                            <span><span class="stat-label">Min</span><span class="stat-value">${data.min_value !== undefined ? data.min_value : '--'}</span></span>
+                            <span><span class="stat-label">Max</span><span class="stat-value">${data.max_value !== undefined ? data.max_value : '--'}</span></span>
+                            <span><span class="stat-label">Count</span><span class="stat-value">${data.readings_count || '--'}</span></span>
+                        </div>
+                    `;
+                } else {
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <span class="card-title">${config.icon} ${config.label}</span>
+                        </div>
+                        <div class="value" style="color: #475569">--</div>
+                        <div class="unit">Awaiting data</div>
+                    `;
+                }
+                container.appendChild(card);
+            }
+
+            // Update alert banner
+            const banner = document.getElementById('alert-banner');
+            const alertTitle = document.getElementById('alert-title');
+            const alertMsg = document.getElementById('alert-message');
+            const alertIcon = document.getElementById('alert-icon');
+
+            if (dangerSensors.length > 0) {
+                banner.className = 'alert-banner active danger';
+                alertIcon.innerHTML = '&#128680;';
+                alertTitle.textContent = 'FLOOD RISK - DANGER';
+                alertMsg.textContent = `Critical readings from: ${dangerSensors.join(', ')}. Immediate attention required!`;
+            } else if (warningSensors.length > 0) {
+                banner.className = 'alert-banner active warning';
+                alertIcon.innerHTML = '&#9888;&#65039;';
+                alertTitle.textContent = 'Elevated Readings Detected';
+                alertMsg.textContent = `Warning-level readings from: ${warningSensors.join(', ')}. Monitoring closely.`;
+            } else {
+                banner.className = 'alert-banner active normal';
+                alertIcon.innerHTML = '&#9989;';
+                alertTitle.textContent = 'All Systems Normal';
+                alertMsg.textContent = 'All sensor readings are within safe thresholds.';
+            }
+        }
+
+        // ---- Update Charts ----
+        function updateCharts(historyData) {
+            for (const [type, readings] of Object.entries(historyData)) {
+                if (!charts[type] || !readings || readings.length === 0) continue;
+
+                const labels = readings.map(r => {
+                    const d = new Date(r.timestamp);
+                    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                });
+                const values = readings.map(r => parseFloat(r.value));
+                const avgValues = readings.map(r => parseFloat(r.processed_value || r.value));
+
+                charts[type].data.labels = labels;
+                charts[type].data.datasets[0].data = values;
+                charts[type].data.datasets[1].data = avgValues;
+                charts[type].update('none');
+            }
+        }
+
+        // ---- Fetch Data from API ----
+        async function fetchData() {
+            try {
+                const [latestRes, historyRes] = await Promise.all([
+                    fetch(`${API_BASE_URL}/api/latest`),
+                    fetch(`${API_BASE_URL}/api/all-history?limit=50`)
+                ]);
+
+                if (!latestRes.ok || !historyRes.ok) {
+                    throw new Error(`API returned ${latestRes.status}/${historyRes.status}`);
+                }
+
+                const latestData = await latestRes.json();
+                const historyData = await historyRes.json();
+
+                updateCards(latestData);
+                updateCharts(historyData);
+                fetchErrors = 0;
+
+                const dot = document.getElementById('status-dot');
+                dot.style.background = '#22c55e';
+                document.getElementById('last-updated').textContent =
+                    `Updated: ${new Date().toLocaleTimeString()}`;
+
+            } catch (error) {
+                fetchErrors++;
+                console.error('Fetch error:', error);
+                const dot = document.getElementById('status-dot');
+                dot.style.background = fetchErrors > 3 ? '#ef4444' : '#f59e0b';
+                document.getElementById('last-updated').textContent =
+                    `Error: ${error.message} (retry ${fetchErrors})`;
+            }
+        }
+
+        // ---- Initialize ----
+        initCharts();
+        fetchData();
+        setInterval(fetchData, 10000);  // Auto refresh every 10 seconds
+    </script>
+</body>
+</html>
